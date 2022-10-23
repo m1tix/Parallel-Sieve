@@ -5,14 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 // TODO
-//  NEW SOLUTION JUST DROPPED
-//      let s=0 do the prime finding prior,
-//      i.e. sieve [1, sqrt(N)] on s = 0
-//      send this array to all processors
-//      let the processors sieve locally
-//      and combine.
-//      Assume for simplicity that sqrt(N) is actually in s = 0.
-//  superstep 1 is completely WRONG
+// superstep 1 can be slightly tweaked:
+//  do the -start before the loop, might shave of a few ms huh
 
 static unsigned int P = 4;
 unsigned long MAX;
@@ -32,9 +26,8 @@ unsigned long closest_odd(unsigned long n) {
 
 /* sieve the given array a, which starts at start and ends at end,
  * up to the specified bound */
-void sieve(uint32_t *a, unsigned long start, unsigned long end, unsigned long bound) {
-
-}
+void sieve(uint32_t *a, unsigned long start, unsigned long end,
+           unsigned long bound) {}
 
 void bsp_main(void) {
     /* bulk of program */
@@ -51,11 +44,27 @@ void bsp_main(void) {
     } else {
         composite_array_len = blocksize;
     }
-    uint32_t *composite_array = calloc(composite_array_len, sizeof(uint32_t));
 
+    uint32_t *composite_array = calloc(composite_array_len, sizeof(uint32_t));
     if (composite_array == NULL) {
         bsp_abort("WAAAAAAAA, something wrong while assigning mem\n");
     }
+    if (s == p - 1) {
+        composite_array[composite_array_len - 1] |=
+            (~1ULL << ((MAX & 63) >> 1));
+    }
+    unsigned long start = (s * blocksize * (1 << 6)) | 1;
+    unsigned long end = start + (composite_array_len << 6) - 2;
+
+    // array of primes found in first super step
+    unsigned long primes_len = (sqrtMAX >> 6) + 1;
+    uint32_t *primes = malloc(primes_len * sizeof(uint32_t));
+    if (primes == NULL) {
+        bsp_abort("WAAAAAAA, error while assigning memory\n");
+    }
+    bsp_push_reg(primes, sizeof(uint32_t) * primes_len);
+    bsp_sync(); // sync is necessary
+
     // superstep 0: proc s=0 calculates all primes below sqrt(MAX)
     unsigned long index_sqrtMAX = sqrtMAX >> 1;
     if (s == 0) {
@@ -71,15 +80,6 @@ void bsp_main(void) {
             }
         }
     }
-
-    // array containing the found primes in first superstep
-    unsigned long primes_len = (sqrtMAX >> 6) + 1;
-    uint32_t *primes = malloc(primes_len * sizeof(uint32_t));
-    if (primes == NULL) {
-        bsp_abort("WAAAAAAA, error while assigning memory\n");
-    }
-    bsp_push_reg(primes, sizeof(uint32_t) * primes_len);
-    bsp_sync(); // sync is necessary
     if (s == 0) {
         // copy the found primes into the array.
         memcpy(primes, composite_array, sizeof(uint32_t) * primes_len);
@@ -90,14 +90,11 @@ void bsp_main(void) {
             bsp_put(t, primes, primes, 0, sizeof(uint32_t) * primes_len);
         }
     }
-    bsp_sync();
     bsp_pop_reg(primes);
-
-    unsigned long start = (s * blocksize * (1 << 6)) | 1;
-    unsigned long end = start + (composite_array_len << 6) - 2;
-    // printf("s = %ld is responsible for %lu-%lu\n", s, start, end);
     bsp_sync();
-    float start_time = bsp_time();
+
+    double start_time = bsp_time();
+    // printf("s = %ld is responsible for %lu-%lu\n", s, start, end);
     // superstep 1: let all processors sieve their part of the array.
     for (unsigned long k = 0; k < primes_len; k++) {
         for (char r = 0; r < 32; r++) {
@@ -105,49 +102,33 @@ void bsp_main(void) {
                 unsigned long q = r << 1 | 1 | (k << 6);
                 unsigned long j = q * q;
                 if (j < start) {
+                    // calculate first multiple of q in array
                     j = (start + q - 1) / q * q;
                     if ((j & 1) == 0) {
                         j += q;
                     }
                 }
-                for (; j <= end; j += (q << 1)) {
-                    composite_array[(j - start) >> 6] |= 1 << ((j & 63) >> 1);
+                j -= start;
+                for (; j <= end - start; j += (q << 1)) {
+                    composite_array[j >> 6] |= 1 << ((j & 63) >> 1);
                 }
             }
         }
     }
+    printf("Took s=%ld around t=%f to sieve\n", s, bsp_time() - start_time);
+    fflush(stdout);
     bsp_sync();
     free(primes);
 
-    // superstep 2: count all the primes;
-    unsigned long local_count = 0;
-    unsigned long *sum = calloc(p, sizeof(unsigned long));
-    bsp_push_reg(sum, p * sizeof(unsigned long));
-    bsp_sync();
-
-    for (unsigned long j = 0; j < composite_array_len; j++) {
-        for (char r = 0; r < 32; r++) {
-            if ((composite_array[j] & (1 << r)) == 0) {
-                local_count += 1;
-            }
-        }
-    }
-    for (long t = 0; t < p; t++)
-        bsp_put(t, &local_count, sum, s * sizeof(unsigned long),
-                sizeof(unsigned long));
-    bsp_sync();
-    unsigned long total = 1;
-    for (long t = 0; t < p; t++) {
-        total += sum[t];
-    }
-    bsp_pop_reg(sum);
-    free(sum);
-
-    printf("I, s=%ld, have found %lu primes\n", s, total);
-    fflush(stdout);
-    if (s == 0) {
-        printf("Took %f\n", bsp_time() - start_time);
-    }
+    // print them primes baby
+    // for (unsigned long i = 0; i < composite_array_len; i++) {
+    //     for (char r = 0; r < 32; r++) {
+    //         if ((composite_array[i] & (1 << (r & 31))) == 0) {
+    //             printf("%lu\n", (r << 1) | 1 | (i << 6) + start);
+    //             fflush(stdout);
+    //         }
+    //     }
+    // }
     free(composite_array);
     bsp_end();
 }
@@ -155,7 +136,14 @@ void bsp_main(void) {
 int main(int argc, char **argv) {
     bsp_init(bsp_main, argc, argv);
     MAX = strtol(argv[1], NULL, 10);
+    if (argc >= 3) {
+        P = strtol(argv[2], NULL, 10);
+        if (P > bsp_nprocs()) {
+            printf("Maximum number of processors is %u", bsp_nprocs());
+            return 1;
+        }
+    }
     MAX = closest_odd(MAX);
     bsp_main();
-    return EXIT_SUCCESS;
+    return 0;
 }

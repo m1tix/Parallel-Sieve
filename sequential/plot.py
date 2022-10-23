@@ -20,9 +20,9 @@ def getMean(g):
 
 if __name__ == "__main__":
     files = {
-        "normal.csv": ["char array odd numbers", "red"],
-        "bitpack.csv": ["bitpack uint32", "blue"],
-        "mult6.csv": ["char array 6 multiples", "green"],
+        "data/normal.csv": ["char array odd numbers", "red"],
+        "data/bitpack.csv": ["bitpack uint32", "blue"],
+        "data/mult6.csv": ["char array 6 multiples", "green"],
         "../parallel/fast1.csv": ["parallel", "purple"]
     }
     for g in files:

@@ -77,7 +77,7 @@ void sieve_multsix(unsigned long max) {
         }
     }
     free(arr);
-    printf("%lu\n", count);
+    printf("primes found: %lu\n", count);
 }
 /* sieve_normal: prints prime up to given maximum max
  * uses a normal char array to represent odd numbers */
@@ -106,7 +106,7 @@ void sieve_normal(unsigned long max) {
             count++;
     }
     free(arr);
-    printf("%lu\n", count);
+    printf("primes found: %lu\n", count);
 }
 /* sieve_bitpack: prints primes up to given maximum max
  * uses an array of uint32, where each bit is an odd number */
@@ -172,6 +172,10 @@ int main(int argc, char **argv) {
         return 1;
     }
     unsigned long bound = strtol(argv[1], NULL, 10);
+    unsigned int flagopt = 0;
+    if (argc >= 3) {
+        flagopt = strtol(argv[2], NULL, 10);
+    }
     /* some hand checking, very ugly :(*/
     if (bound < 2) {
         return 0;
@@ -183,6 +187,18 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    sieve_bitpack(bound);
+    if (flagopt == 0) {
+        puts("Using the bitpack version");
+        sieve_bitpack(bound);
+    } else if (flagopt == 1) {
+        puts("Using the char array version");
+        sieve_normal(bound);
+    } else if (flagopt == 2) {
+        puts("Using the 6-multiples array version");
+        sieve_multsix(bound);
+    } else {
+        puts("Unrecognized flag option");
+        abort();
+    }
     return 0;
 }

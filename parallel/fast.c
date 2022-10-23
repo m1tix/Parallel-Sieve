@@ -5,10 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 // TODO
-// make printing function.
-// more functions.
+// more functions
+// printing functions
+// memory usage of this compared to bitpacking is not that much
+// should be an order of 8 difference, but there is less than order 2.
 
-static unsigned int P = 4;
+static unsigned int P = 2;
 unsigned long MAX;
 
 void bsp_main(void);
@@ -79,6 +81,7 @@ void bsp_main(void) {
     unsigned long start = sqrtMAX + 2 + (s * blocksize * 2) | 1;
     unsigned long end = start + (composite_array_len << 1) - 2;
     printf("s = %ld is responsible for %lu-%lu\n", s, start, end);
+    float start_time = bsp_time();
     for (unsigned long k = 1; k < primes_len; k++) {
         if (primes[k] == 0) {
             unsigned long q = (k << 1) | 1;
@@ -122,13 +125,24 @@ void bsp_main(void) {
     free(primes);
     free(composite_array);
     printf("I, s=%ld, have found %lu primes\n", s, total);
+    fflush(stdout);
+    if (s == 0) {
+        printf("Took %f\n", bsp_time() - start_time);
+    }
     bsp_end();
 }
 
 int main(int argc, char **argv) {
     bsp_init(bsp_main, argc, argv);
     MAX = strtol(argv[1], NULL, 10);
+    if (argc >= 3) {
+        P = strtol(argv[2], NULL, 10);
+        if (P > bsp_nprocs()) {
+            printf("Maximum number of processors is %u", bsp_nprocs());
+            return 1;
+        }
+    }
     MAX = closest_odd(MAX);
     bsp_main();
-    return EXIT_SUCCESS;
+    return 0;
 }
