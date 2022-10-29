@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 void sieve_bitpack(unsigned long max);
 void sieve_normal(unsigned long max);
@@ -124,6 +125,8 @@ void sieve_bitpack(unsigned long max) {
     /* 1 is not prime ;) */
     composite_list[0] |= 1;
 
+    float start_time = clock();
+
     for (unsigned long i = 3; i <= sqrtmax; i += 2) {
         if ((composite_list[i >> 6] & (1ULL << ((i & 63) >> 1))) == 0) {
             for (unsigned long j = i * i; j <= max; j += i << 1) {
@@ -132,17 +135,17 @@ void sieve_bitpack(unsigned long max) {
         }
     }
     /* its printing time, 2 is hardcoded. */
-    unsigned long count = 1;
+    // unsigned long count = 1;
     // puts("2");
-    for (unsigned long k = 0; k < composite_list_len; k++) {
-        for (char r = 0; r < 32; r++) {
-            if ((composite_list[k] & (1 << r)) == 0) {
-                count++;
-            }
-        }
-    }
+    // for (unsigned long k = 0; k < composite_list_len; k++) {
+    //     for (char r = 0; r < 32; r++) {
+    //         if ((composite_list[k] & (1 << r)) == 0) {
+    //             count++;
+    //         }
+    //     }
+    // }
     free(composite_list);
-    printf("primes found: %lu\n", count);
+    printf("%f\n", (clock() - start_time) / CLOCKS_PER_SEC);
 }
 
 int main(int argc, char **argv) {
@@ -167,7 +170,7 @@ int main(int argc, char **argv) {
     }
 
     if (flagopt == 0) {
-        puts("Using the bitpack version");
+        // puts("Using the bitpack version");
         sieve_bitpack(bound);
     } else if (flagopt == 1) {
         puts("Using the char array version");

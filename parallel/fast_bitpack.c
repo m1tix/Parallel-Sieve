@@ -135,17 +135,21 @@ void bsp_main(void) {
     free(primes);
     bsp_sync();
 
-    // print them primes baby
+    //  unsigned long count = 0;
+    //  // print them primes baby
     // for (unsigned long i = 0; i < composite_array_len; i++) {
-    //     for (char r = 0; r < 32; r++) {
-    //         if ((composite_array[i] & (1 << (r & 31))) == 0) {
-    //             printf("%lu\n", (r << 1) | 1 | (i << 6) + start);
-    //             fflush(stdout);
-    //         }
-    //     }
-    // }
+    //      for (char r = 0; r < 32; r++) {
+    //          if ((composite_array[i] & (1 << (r & 31))) == 0) {
+    //              // printf("%lu\n", (r << 1) | 1 | (i << 6) + start);
+    //              // fflush(stdout);
+    //              count++;
+    //          }
+    //      }
+    //  }
+    // printf("s=%ld found %lu\n", s, count);
+    // fflush(stdout);
     if (s == 0) {
-        printf("This took %f\n", bsp_time() - start_time);
+        printf("%f\n", bsp_time() - start_time);
     }
     free(composite_array);
     bsp_end();

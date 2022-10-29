@@ -1,4 +1,4 @@
--I/home/mitix/Programming/c/MulticoreBSP-for-C/include
+-I/home/m1tix/Programming/c/MulticoreBSP-for-C/include
 -lm
 -Wall
 -g
