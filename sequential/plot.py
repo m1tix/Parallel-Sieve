@@ -23,7 +23,6 @@ if __name__ == "__main__":
         "data/normal.csv": ["char array odd numbers", "red"],
         "data/bitpack.csv": ["bitpack uint32", "blue"],
         "data/mult6.csv": ["char array 6 multiples", "green"],
-        "../parallel/fast1.csv": ["parallel", "purple"]
     }
     for g in files:
         mean, stdev, inp = getMean(g)

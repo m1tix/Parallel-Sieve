@@ -111,39 +111,23 @@ void sieve_normal(unsigned long max) {
 /* sieve_bitpack: prints primes up to given maximum max
  * uses an array of uint32, where each bit is an odd number */
 void sieve_bitpack(unsigned long max) {
-    /* we first initialize an array of uint_32s
-     * an odd number x>=3 then corresponds to the s-th bit in the t-th element
-     * where
-     *      s = ((x - 3) & 63) >> 1
-     *      t = (x - 3) // 65
-     *  This actually shows that its easier to include 1: this gets rid of -3 in
-     * both eq! so we have (possibly) 32-bit extra storage for a big performance
-     * boost! new values of s and t are thus
-     *      s = (x & 63) >> 1
-     *      t = x >> 6
-     *  Hence the t-th element (t >= 0) stores all the odd integers in the
-     * interval [2^6*t + 1, 2^6*(t+1) - 1]. It is then easy to see that we thus
-     * need
-     *      (max >> 6) + 1
-     * elements in our array!
-     */
-
     /* ensure max is odd */
     max = closest_odd(max);
-    unsigned long composite_list_len = (max >> 7) + 1;
-    uint64_t *composite_list = calloc(composite_list_len, sizeof(uint64_t));
+    // initialize some variables
+    unsigned long composite_list_len = (max >> 6) + 1;
+    uint32_t *composite_list = calloc(composite_list_len, sizeof(uint32_t));
     unsigned long sqrtmax = closest_odd(sqrt(max));
 
     /* make sure bits after max are set to 1 as they are not counted */
     /* this may not be bug free, might depend on size of unsigned int */
-    composite_list[composite_list_len - 1] = (~1ULL << ((max & 127) >> 1));
+    composite_list[composite_list_len - 1] = (~1ULL << ((max & 63) >> 1));
     /* 1 is not prime ;) */
     composite_list[0] |= 1;
 
     for (unsigned long i = 3; i <= sqrtmax; i += 2) {
-        if ((composite_list[i >> 7] & (1ULL << ((i & 127) >> 1))) == 0) {
+        if ((composite_list[i >> 6] & (1ULL << ((i & 63) >> 1))) == 0) {
             for (unsigned long j = i * i; j <= max; j += i << 1) {
-                composite_list[j >> 7] |= 1ULL << ((j & 127) >> 1);
+                composite_list[j >> 6] |= 1ULL << ((j & 63) >> 1);
             }
         }
     }
@@ -151,15 +135,10 @@ void sieve_bitpack(unsigned long max) {
     unsigned long count = 1;
     // puts("2");
     for (unsigned long k = 0; k < composite_list_len; k++) {
-        unsigned long r = 0;
-        while (r < 64) {
-            if ((composite_list[k] & (1ULL << r)) == 0) {
-                // this can be made faster, 2*r + 1 will always be smaller than
-                // 1 << 6 unless k = 0. printf("%lu\n", 2 * r + 1 + k * (1 <<
-                // 6));
+        for (char r = 0; r < 32; r++) {
+            if ((composite_list[k] & (1 << r)) == 0) {
                 count++;
             }
-            r++;
         }
     }
     free(composite_list);
